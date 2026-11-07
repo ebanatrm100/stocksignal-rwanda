@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from stocksignal import REQUIRED_COLUMNS, audit_inventory
+from stocksignal_workflows import render_workflows
 
 st.set_page_config(
     page_title="StockSignal | Inventory Intelligence",
@@ -422,6 +423,14 @@ with st.expander("How the calculations work and what they cannot tell you"):
         A flagged item is a prompt to verify information and follow authorised procedures. It is not an instruction to reorder, transfer, quarantine, dispense, or discard stock. Real deployments require authorised users, privacy and security review, retention controls, appropriate local approvals, and evaluation against existing systems.
         """
     )
+
+render_workflows(
+    source_df=source_df,
+    audited=audited,
+    product_risk=product_risk,
+    analysis_date=analysis_date,
+    expiry_days=int(expiry_days),
+)
 
 st.markdown(
     """

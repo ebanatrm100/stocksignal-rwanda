@@ -6,7 +6,7 @@ import pytest
 
 from stocksignal import REQUIRED_COLUMNS, audit_inventory
 
-SAMPLE = Path(__file__).resolve().parents[1] / "sample_inventory.csv"
+SAMPLE = Path(__file__).resolve().parents[0] / "sample_inventory.csv"
 AS_OF = date(2026, 10, 11)
 
 
