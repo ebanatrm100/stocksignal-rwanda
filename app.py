@@ -33,170 +33,472 @@ st.markdown(
     <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
 
+    /*
+       Theme-safe StockSignal design:
+       Streamlit supplies these variables for Light, Dark, and System appearance.
+       The fallback values are only used if a Streamlit theme variable is unavailable.
+    */
     :root {
-      --ink: #142538;
-      --muted: #687b8e;
-      --teal: #087f8c;
-      --teal-dark: #086b75;
-      --teal-pale: #e7f5f5;
-      --blue-pale: #eef4fb;
-      --line: #e3eaf0;
-      --surface: #ffffff;
-      --page: #f4f7fa;
-      --amber: #b96a12;
-      --amber-pale: #fff5e7;
-      --red: #b83b45;
-      --red-pale: #fff0f1;
-      --green: #247a56;
-      --green-pale: #eaf7f0;
+      --ss-bg: var(--background-color, var(--st-background-color, #f4f7fa));
+      --ss-surface: var(--secondary-background-color, var(--st-secondary-background-color, #ffffff));
+      --ss-ink: var(--text-color, var(--st-text-color, #142538));
+      --ss-primary: var(--primary-color, var(--st-primary-color, #087f8c));
+      --ss-border: var(--border-color, var(--st-border-color, rgba(120, 135, 150, 0.35)));
+      --ss-muted: color-mix(in srgb, var(--ss-ink) 76%, var(--ss-bg));
+      --ss-soft-accent: color-mix(in srgb, var(--ss-primary) 10%, var(--ss-surface));
+      --ss-soft-amber: color-mix(in srgb, #d58a22 12%, var(--ss-surface));
     }
 
-    html, body, [class*="css"] {
+    html, body {
       font-family: 'DM Sans', sans-serif;
-      color: var(--ink);
+      color: var(--ss-ink);
     }
-    .stApp { background: var(--page); }
-    [data-testid="stHeader"] { background: rgba(244,247,250,0.88); }
+    .stApp,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"] {
+      background: var(--ss-bg);
+      color: var(--ss-ink);
+    }
     [data-testid="stMainBlockContainer"] {
       max-width: 1500px;
       padding-top: 1.4rem;
       padding-bottom: 2.8rem;
+      color: var(--ss-ink);
     }
-    h1, h2, h3, h4 { font-family: 'Manrope', sans-serif !important; color: var(--ink); }
+
+    /* Native Streamlit text and headings follow the selected appearance. */
+    [data-testid="stMarkdownContainer"],
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li,
+    [data-testid="stCaptionContainer"],
+    [data-testid="stWidgetLabel"],
+    [data-testid="stWidgetLabel"] p,
+    label,
+    legend {
+      color: var(--ss-ink);
+    }
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Manrope', sans-serif !important;
+      color: var(--ss-ink) !important;
+    }
     h2 { letter-spacing: -0.035em; }
     p, li, label { line-height: 1.55; }
+    [data-testid="stCaptionContainer"],
+    .stCaption,
+    small {
+      color: var(--ss-muted) !important;
+    }
+    a { color: var(--ss-primary); }
 
+    /* Sidebar */
     [data-testid="stSidebar"] {
-      background: #ffffff;
-      border-right: 1px solid var(--line);
+      background: var(--ss-surface);
+      color: var(--ss-ink);
+      border-right: 1px solid var(--ss-border);
     }
     [data-testid="stSidebar"] > div:first-child { padding-top: 1.15rem; }
-    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: var(--ink); }
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color: var(--muted); }
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
+      color: var(--ss-ink) !important;
+    }
+    [data-testid="stSidebar"] .sidebar-caption {
+      color: var(--ss-muted) !important;
+    }
 
+    /* Inputs, uploaders, select menus, and other interactive controls */
     div[data-testid="stFileUploader"] section {
-      background: #f8fbfd;
-      border: 1px dashed #b8cbd8;
+      background: var(--ss-surface);
+      color: var(--ss-ink);
+      border: 1px dashed var(--ss-border);
       border-radius: 14px;
       padding: 0.8rem;
     }
-    div[data-testid="stFileUploader"] section:hover { border-color: var(--teal); }
+    div[data-testid="stFileUploader"] section:hover {
+      border-color: var(--ss-primary);
+    }
+    div[data-testid="stFileUploader"] section,
+    div[data-testid="stFileUploader"] section * {
+      color: var(--ss-ink);
+    }
+    [data-testid="stTextInput"] input,
+    [data-testid="stNumberInput"] input,
+    [data-testid="stDateInput"] input,
+    [data-testid="stTextArea"] textarea,
+    [data-testid="stTextArea"] [contenteditable="true"],
+    [data-baseweb="select"] > div,
+    [data-baseweb="input"] > div,
+    [data-baseweb="textarea"] {
+      background-color: var(--ss-surface) !important;
+      color: var(--ss-ink) !important;
+      border-color: var(--ss-border) !important;
+    }
+    [data-baseweb="popover"],
+    [role="listbox"],
+    [role="option"] {
+      background: var(--ss-surface);
+      color: var(--ss-ink);
+    }
+    [role="option"]:hover {
+      background: var(--ss-soft-accent);
+    }
+
+    /* Summary metrics and data tables */
     [data-testid="stMetric"] {
-      background: var(--surface);
-      border: 1px solid var(--line);
+      background: var(--ss-surface);
+      color: var(--ss-ink);
+      border: 1px solid var(--ss-border);
       border-radius: 16px;
       padding: 17px 18px;
       box-shadow: 0 5px 18px rgba(19, 43, 64, 0.035);
     }
-    [data-testid="stMetricLabel"] { color: var(--muted) !important; font-weight: 600; }
-    [data-testid="stMetricValue"] { color: var(--ink) !important; font-family: 'Manrope', sans-serif; }
+    [data-testid="stMetricLabel"],
+    [data-testid="stMetricLabel"] * {
+      color: var(--ss-muted) !important;
+      font-weight: 600;
+    }
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricValue"] * {
+      color: var(--ss-ink) !important;
+      font-family: 'Manrope', sans-serif;
+    }
+    [data-testid="stDataFrame"] {
+      border: 1px solid var(--ss-border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--ss-surface);
+      color: var(--ss-ink);
+    }
 
+    /* Tabs */
     [data-testid="stTabs"] [role="tablist"] {
       gap: 0.35rem;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid var(--ss-border);
     }
     [data-testid="stTabs"] button[role="tab"] {
       padding: 0.75rem 1rem;
       border-radius: 10px 10px 0 0;
-      font-weight: 600;
+      font-weight: 650;
+      color: var(--ss-ink) !important;
     }
     [data-testid="stTabs"] button[aria-selected="true"] {
-      color: var(--teal-dark);
-      border-bottom-color: var(--teal) !important;
+      color: var(--ss-ink) !important;
+      border-bottom-color: var(--ss-primary) !important;
     }
 
-    [data-testid="stDataFrame"] {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      overflow: hidden;
-      background: white;
-    }
+    /* Buttons remain neutral and readable in every theme. */
     [data-testid="stDownloadButton"] button,
     [data-testid="stButton"] button {
+      color: var(--ss-ink) !important;
+      background: var(--ss-surface) !important;
+      border: 1px solid var(--ss-border) !important;
       border-radius: 10px;
       font-weight: 650;
-      border: 1px solid #c7d8e0;
-      transition: all 120ms ease-in-out;
+      transition: border-color 120ms ease-in-out, background 120ms ease-in-out;
     }
     [data-testid="stDownloadButton"] button:hover,
     [data-testid="stButton"] button:hover {
-      border-color: var(--teal);
-      color: var(--teal-dark);
+      border-color: var(--ss-primary) !important;
+      background: var(--ss-soft-accent) !important;
     }
     [data-testid="stAlert"] { border-radius: 12px; }
+
+    /* Expanders: theme-aware surface and foreground, not fixed light colors. */
     div[data-testid="stExpander"] {
-      border: 1px solid var(--line);
+      border: 1px solid var(--ss-border);
       border-radius: 12px;
-      background: white;
+      background: var(--ss-surface);
+      color: var(--ss-ink);
+    }
+    div[data-testid="stExpander"] details > summary {
+      background: var(--ss-surface) !important;
+      color: var(--ss-ink) !important;
+      border-radius: 10px;
+      padding: 0.85rem 1rem !important;
+      min-height: 3rem;
+      font-family: 'DM Sans', sans-serif !important;
+      font-size: 1.05rem !important;
+      font-weight: 700 !important;
+      line-height: 1.5 !important;
+    }
+    div[data-testid="stExpander"] details > summary p,
+    div[data-testid="stExpander"] details > summary span,
+    div[data-testid="stExpander"] details > summary svg {
+      color: var(--ss-ink) !important;
+      fill: currentColor;
+      font-size: 1.05rem !important;
+      font-weight: 700 !important;
+      line-height: 1.5 !important;
+    }
+    div[data-testid="stExpander"] details > summary:hover {
+      background: var(--ss-soft-accent) !important;
+    }
+    div[data-testid="stExpander"] details > summary:focus-visible {
+      outline: 3px solid var(--ss-primary);
+      outline-offset: 3px;
+      border-radius: 10px;
     }
 
-    .brand-line { display:flex; align-items:center; gap:12px; margin-bottom: 1rem; }
+    /* StockSignal brand and custom dashboard components */
+    .brand-line { display:flex; align-items:center; gap:12px; margin-bottom:1rem; }
     .brand-symbol {
-      width: 45px; height: 45px; border-radius: 14px;
+      width:45px; height:45px; border-radius:14px;
       display:flex; align-items:center; justify-content:center;
-      background: linear-gradient(135deg, #0b7d88, #155a78);
-      box-shadow: 0 7px 18px rgba(8,127,140,0.2);
-      color: white; font-size: 23px; font-weight: 800;
+      background:linear-gradient(135deg, #0b7d88, #155a78);
+      box-shadow:0 7px 18px rgba(8,127,140,0.2);
+      color:#ffffff; font-size:23px; font-weight:800;
     }
-    .brand-name { font-family:'Manrope',sans-serif; font-weight:800; font-size: 1.18rem; letter-spacing:-0.04em; color:var(--ink); }
-    .brand-sub { font-size:0.68rem; font-weight:700; letter-spacing:0.13em; color:var(--muted); text-transform:uppercase; margin-top:1px; }
+    .brand-name {
+      font-family:'Manrope',sans-serif; font-weight:800; font-size:1.18rem;
+      letter-spacing:-0.04em; color:var(--ss-ink);
+    }
+    .brand-sub {
+      font-size:0.68rem; font-weight:700; letter-spacing:0.13em;
+      color:var(--ss-muted); text-transform:uppercase; margin-top:1px;
+    }
+    .sidebar-brand {
+      padding:8px 0 18px;
+      border-bottom:1px solid var(--ss-border);
+      margin-bottom:18px;
+    }
+    .sidebar-caption {
+      color:var(--ss-muted);
+      font-size:0.79rem;
+      line-height:1.5;
+    }
+    /* Sidebar status labels also follow the active foreground for reliable contrast. */
+    .sidebar-caption span[style*="color:"] {
+      color:var(--ss-ink) !important;
+    }
 
+    /* Hero intentionally remains dark with white text for strong contrast in all modes. */
     .hero {
-      position: relative; overflow: hidden;
-      border-radius: 24px;
-      padding: 27px 30px 28px;
-      color: white;
-      background: linear-gradient(115deg, #102e43 0%, #135d6e 57%, #078a91 100%);
-      box-shadow: 0 14px 32px rgba(16, 46, 67, 0.15);
-      margin-bottom: 1.1rem;
+      position:relative; overflow:hidden;
+      border-radius:24px;
+      padding:27px 30px 28px;
+      color:#ffffff;
+      background:linear-gradient(115deg, #102e43 0%, #135d6e 57%, #078a91 100%);
+      box-shadow:0 14px 32px rgba(16,46,67,0.15);
+      margin-bottom:1.1rem;
     }
     .hero:after {
-      content: ""; position:absolute; right:-75px; top:-135px;
+      content:""; position:absolute; right:-75px; top:-135px;
       width:360px; height:360px; border-radius:50%;
       border:1px solid rgba(255,255,255,0.12);
-      box-shadow: 0 0 0 30px rgba(255,255,255,0.035), 0 0 0 65px rgba(255,255,255,0.025);
+      box-shadow:0 0 0 30px rgba(255,255,255,0.035), 0 0 0 65px rgba(255,255,255,0.025);
       pointer-events:none;
     }
-    .hero-top { display:flex; align-items:center; justify-content:space-between; gap:1rem; position:relative; z-index:1; }
-    .hero-brand { display:flex; align-items:center; gap:10px; font-family:'Manrope',sans-serif; font-weight:800; letter-spacing:-0.03em; font-size:1.08rem; }
-    .hero-brand-mark { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.2); border-radius:10px; padding:7px 9px; }
-    .demo-badge { font-size:0.7rem; font-weight:800; letter-spacing:0.09em; text-transform:uppercase; padding:7px 10px; border-radius:99px; border:1px solid rgba(255,255,255,0.3); background:rgba(255,255,255,0.1); color:#e3ffff; white-space:nowrap; }
-    .hero h1 { color:white !important; font-size:clamp(1.9rem, 3vw, 2.65rem); line-height:1.12; letter-spacing:-0.055em; margin:22px 0 10px; position:relative; z-index:1; }
-    .hero h1 span { color:#88e1de; }
-    .hero p { color:#d4e8ef; max-width:760px; margin:0; position:relative; z-index:1; font-size:1rem; }
-    .hero-foot { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; position:relative; z-index:1; }
-    .hero-chip { display:flex; align-items:center; gap:8px; border-radius:10px; background:rgba(255,255,255,0.1); padding:9px 12px; color:#f5ffff; font-size:0.81rem; border:1px solid rgba(255,255,255,0.1); }
-
-    .section-kicker { color:var(--teal-dark); text-transform:uppercase; letter-spacing:0.14em; font-size:0.68rem; font-weight:800; margin-bottom:4px; }
-    .section-title { font-family:'Manrope',sans-serif; color:var(--ink); font-size:1.34rem; font-weight:800; letter-spacing:-0.04em; margin:0; }
-    .section-help { color:var(--muted); font-size:0.88rem; margin-top:4px; margin-bottom:0.8rem; }
-    .panel {
-      background: white; border:1px solid var(--line); border-radius:16px;
-      padding:17px 18px; box-shadow:0 5px 18px rgba(19,43,64,0.025);
+    .hero-top {
+      display:flex; align-items:center; justify-content:space-between;
+      gap:1rem; position:relative; z-index:1;
     }
-    .panel-title { font-family:'Manrope',sans-serif; font-size:1rem; font-weight:800; color:var(--ink); margin-bottom:5px; }
-    .panel-sub { color:var(--muted); font-size:0.83rem; margin-bottom:10px; }
+    .hero-brand {
+      display:flex; align-items:center; gap:10px;
+      font-family:'Manrope',sans-serif; font-weight:800;
+      letter-spacing:-0.03em; font-size:1.08rem; color:#ffffff;
+    }
+    .hero-brand-mark {
+      background:rgba(255,255,255,0.15);
+      border:1px solid rgba(255,255,255,0.2);
+      border-radius:10px; padding:7px 9px;
+    }
+    .demo-badge {
+      font-size:0.7rem; font-weight:800; letter-spacing:0.09em;
+      text-transform:uppercase; padding:7px 10px; border-radius:99px;
+      border:1px solid rgba(255,255,255,0.3);
+      background:rgba(255,255,255,0.1); color:#e3ffff; white-space:nowrap;
+    }
+    .hero h1 {
+      color:#ffffff !important;
+      font-size:clamp(1.9rem, 3vw, 2.65rem);
+      line-height:1.12; letter-spacing:-0.055em;
+      margin:22px 0 10px; position:relative; z-index:1;
+    }
+    .hero h1 span { color:#a8f0ec; }
+    .hero p {
+      color:#e2f1f5 !important;
+      max-width:760px; margin:0; position:relative; z-index:1; font-size:1rem;
+    }
+    .hero-foot {
+      display:flex; flex-wrap:wrap; gap:10px;
+      margin-top:22px; position:relative; z-index:1;
+    }
+    .hero-chip {
+      display:flex; align-items:center; gap:8px; border-radius:10px;
+      background:rgba(255,255,255,0.1); padding:9px 12px;
+      color:#ffffff; font-size:0.81rem;
+      border:1px solid rgba(255,255,255,0.18);
+    }
+
+    .section-kicker {
+      color:var(--ss-primary);
+      text-transform:uppercase; letter-spacing:0.14em;
+      font-size:0.7rem; font-weight:800; margin-bottom:4px;
+    }
+    .section-title {
+      font-family:'Manrope',sans-serif;
+      color:var(--ss-ink); font-size:1.34rem; font-weight:800;
+      letter-spacing:-0.04em; margin:0;
+    }
+    .section-help {
+      color:var(--ss-muted); font-size:0.9rem;
+      margin-top:4px; margin-bottom:0.8rem;
+    }
+    .panel {
+      background:var(--ss-surface);
+      color:var(--ss-ink);
+      border:1px solid var(--ss-border);
+      border-radius:16px;
+      padding:17px 18px;
+      box-shadow:0 5px 18px rgba(19,43,64,0.025);
+    }
+    .panel-title {
+      font-family:'Manrope',sans-serif;
+      font-size:1rem; font-weight:800;
+      color:var(--ss-ink); margin-bottom:5px;
+    }
+    .panel-sub {
+      color:var(--ss-muted); font-size:0.83rem; margin-bottom:10px;
+    }
+
     .callout {
       display:flex; gap:12px; align-items:flex-start;
-      background:#fff9ed; border:1px solid #f3d7a9; border-left:4px solid #d58a22;
-      border-radius:13px; padding:13px 15px; color:#704713; margin:0.4rem 0 1.25rem;
+      background:var(--ss-soft-amber);
+      border:1px solid color-mix(in srgb, #d58a22 45%, var(--ss-border));
+      border-left:4px solid #d58a22;
+      border-radius:13px; padding:13px 15px;
+      color:var(--ss-ink); margin:0.4rem 0 1.25rem;
     }
     .callout-icon { font-size:1.1rem; line-height:1.4; }
-    .callout strong { color:#6f410b; }
-    .source-chip { display:inline-block; padding:6px 10px; background:#e9f6f6; border:1px solid #c9e9e8; border-radius:999px; color:#086b75; font-size:0.76rem; font-weight:700; }
-    .summary-strip { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin:0.5rem 0 1.25rem; }
-    .summary-left { color:var(--muted); font-size:0.85rem; }
-    .soft-note { border-radius:12px; background:#f0f6fa; border:1px solid #dfebf2; color:#50677b; padding:12px 14px; font-size:0.84rem; }
-    .status-pill { display:inline-block; border-radius:99px; padding:4px 8px; font-size:0.72rem; font-weight:800; background:var(--amber-pale); color:var(--amber); }
-    .sidebar-brand { padding:8px 0 18px; border-bottom:1px solid var(--line); margin-bottom:18px; }
-    .sidebar-caption { color:var(--muted); font-size:0.79rem; line-height:1.5; }
-    .footer { border-top:1px solid var(--line); padding-top:16px; color:#7b8b9a; font-size:0.76rem; text-align:center; margin-top:2rem; }
-    @media (max-width: 700px) {
+    .callout strong { color:var(--ss-ink); }
+    .source-chip {
+      display:inline-block; padding:6px 10px;
+      background:var(--ss-soft-accent);
+      border:1px solid var(--ss-border);
+      border-radius:999px; color:var(--ss-ink);
+      font-size:0.76rem; font-weight:700;
+    }
+    .summary-strip {
+      display:flex; flex-wrap:wrap; align-items:center;
+      justify-content:space-between; gap:10px; margin:0.5rem 0 1.25rem;
+    }
+    .summary-left { color:var(--ss-muted); font-size:0.85rem; }
+    .summary-left strong { color:var(--ss-ink); }
+    .soft-note {
+      border-radius:12px; background:var(--ss-soft-accent);
+      border:1px solid var(--ss-border); color:var(--ss-ink);
+      padding:12px 14px; font-size:0.84rem;
+    }
+    .status-pill {
+      display:inline-block; border-radius:99px; padding:4px 8px;
+      font-size:0.72rem; font-weight:800;
+      background:var(--ss-soft-amber); color:var(--ss-ink);
+      border:1px solid var(--ss-border);
+    }
+    .footer {
+      border-top:1px solid var(--ss-border);
+      padding-top:16px; color:var(--ss-muted);
+      font-size:0.76rem; text-align:center; margin-top:2rem;
+    }
+    .footer strong { color:var(--ss-ink); }
+
+    /* The three inline status-number colors are normalized to the active text color.
+       Their adjacent labels and panel borders already provide context. */
+    .panel div[style*="color:#b96a12"],
+    .panel div[style*="color:#b83b45"],
+    .panel div[style*="color:#247a56"] {
+      color:var(--ss-ink) !important;
+    }
+
+    @media (max-width:700px) {
       .hero { padding:22px 20px; border-radius:18px; }
       .hero-top { align-items:flex-start; flex-direction:column; }
       .hero h1 { margin-top:18px; }
       .hero:after { opacity:0.35; }
     }
+    
+    /* Final contrast overrides: follow Streamlit's active Light/Dark/System theme. */
+    .ss-readable-note {
+      display:block; width:100%; box-sizing:border-box; padding:14px 16px;
+      margin:0.6rem 0 1rem;
+      border:1px solid var(--ss-border, var(--border-color, #8795a3));
+      border-left:4px solid var(--ss-primary, var(--primary-color, #087f8c));
+      border-radius:12px;
+      background:var(--ss-surface, var(--secondary-background-color, #ffffff));
+      color:var(--ss-ink, var(--text-color, #142538)) !important;
+      font-size:0.92rem; line-height:1.6;
+    }
+    .ss-readable-note strong { color:inherit !important; }
+    [data-testid="stAlert"], [data-testid="stAlert"] > div,
+    [data-testid="stNotification"], [data-testid="stStatusWidget"],
+    [data-testid="stAudio"], [data-testid="stAudioInput"],
+    [data-testid="stAudioInput"] > div {
+      color:var(--ss-ink, var(--text-color, #142538)) !important;
+    }
+    [data-testid="stMetricDelta"], [data-testid="stMetricDelta"] *,
+    [data-testid="stMetricLabel"], [data-testid="stMetricLabel"] *,
+    [data-testid="stMetricValue"], [data-testid="stMetricValue"] * {
+      color:var(--ss-ink, var(--text-color, #142538)) !important;
+      opacity:1 !important;
+    }
+    [data-testid="stAudioInput"] *, [data-testid="stAudio"] *,
+    [data-testid="stAudioInput"] button {
+      color:var(--ss-ink, var(--text-color, #142538)) !important;
+    }
+    [data-testid="stAudioInput"] button {
+      background:var(--ss-surface, var(--secondary-background-color, #ffffff)) !important;
+      border:1px solid var(--ss-border, var(--border-color, #8795a3)) !important;
+    }
+    [data-testid="stAlert"] p, [data-testid="stAlert"] span,
+    [data-testid="stAlert"] div {
+      color:var(--ss-ink, var(--text-color, #142538)) !important;
+    }
+
+    
+    /* Theme-aware notice and metric contrast for Light, Dark and System modes. */
+    .ss-readable-note {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 14px 16px;
+      margin: 0.6rem 0 1rem;
+      border: 1px solid var(--border-color, rgba(120,135,150,.4));
+      border-left: 4px solid var(--primary-color, #087f8c);
+      border-radius: 12px;
+      background: var(--secondary-background-color, #ffffff) !important;
+      color: var(--text-color, #142538) !important;
+      font-size: .92rem;
+      line-height: 1.6;
+    }
+    .ss-readable-note strong { color: inherit !important; }
+
+    [data-testid="stAlert"],
+    [data-testid="stAlert"] > div,
+    [data-testid="stNotification"] {
+      background: var(--secondary-background-color, #ffffff) !important;
+      color: var(--text-color, #142538) !important;
+    }
+    [data-testid="stAlert"] p,
+    [data-testid="stAlert"] span,
+    [data-testid="stAlert"] div {
+      color: var(--text-color, #142538) !important;
+    }
+    [data-testid="stMetric"] {
+      background: var(--secondary-background-color, #ffffff) !important;
+      color: var(--text-color, #142538) !important;
+      border-color: var(--border-color, rgba(120,135,150,.4)) !important;
+    }
+    [data-testid="stMetricDelta"],
+    [data-testid="stMetricDelta"] *,
+    [data-testid="stMetricLabel"],
+    [data-testid="stMetricLabel"] *,
+    [data-testid="stMetricValue"],
+    [data-testid="stMetricValue"] * {
+      color: var(--text-color, #142538) !important;
+      opacity: 1 !important;
+    }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -254,16 +556,6 @@ st.markdown(
         <div class="hero-chip">▤ &nbsp; CSV audit exports</div>
       </div>
     </section>
-    """,
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """
-    <div class="callout">
-      <div class="callout-icon">⚠</div>
-      <div><strong>Demonstration and decision support only.</strong> Sample records are fabricated. StockSignal does not replace eLMIS, a pharmacist, or an authorised supply-chain decision-maker. A flag is a prompt to verify data and follow approved procedures—not an instruction to order, transfer, quarantine, dispense, or discard stock.</div>
-    </div>
     """,
     unsafe_allow_html=True,
 )
@@ -475,10 +767,11 @@ st.markdown(
     '<div class="section-help">Compare two authorised CSV exports to identify added, changed, missing and ambiguous batch records.</div>',
     unsafe_allow_html=True,
 )
-st.info(
-    "Read-only comparison: StockSignal reports differences between files. It does not synchronise systems, "
-    "change inventory, or infer why a record changed or is absent. Verify every difference with an authorised person. "
-    "Use synthetic data for this public demonstration."
+st.markdown(
+    '<div class="ss-readable-note"><strong>Read-only comparison:</strong> StockSignal reports differences between files. '
+    'It does not synchronise systems, change inventory, or infer why a record changed or is absent. '
+    'Verify every difference with an authorised person. Use synthetic data for this public demonstration.</div>',
+    unsafe_allow_html=True,
 )
 with st.expander("Get the synthetic demonstration files"):
     st.caption(
