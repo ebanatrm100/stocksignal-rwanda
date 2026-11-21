@@ -108,11 +108,12 @@ def render_workflows(
         st.caption(
             "Record a short memo, enter or correct its transcript, then queue a structured draft for verification."
         )
-        st.info(
-            "Microphone recording is available in supported browsers with permission. "
-            "This version does not automatically transcribe audio. The text parser is "
-            "rule-based, and no inventory quantity changes until an authorised person "
-            "checks the observation against the source records."
+        st.markdown(
+            '<div class="ss-readable-note"><strong>Voice observation:</strong> The microphone records an audio memo. '
+            'Enter or correct its transcript in the field below; StockSignal extracts draft fields from the text you provide. '
+            'Check the draft before adding it to the human-verification queue. Recording or submitting a draft does not edit '
+            'the inventory source.</div>',
+            unsafe_allow_html=True,
         )
         audio = st.audio_input("Record a stock observation", key="ss_audio_memo")
         if audio is not None:
@@ -332,10 +333,11 @@ def render_workflows(
     # Marketplace: session-only offers and non-binding expressions of interest.
     with swap_tab:
         st.markdown("#### Inter-facility coordination board")
-        st.info(
-            "Demonstration board only: offers are not shared across users or saved centrally. "
-            "Any proposed movement requires authorised review, local policy checks and a "
-            "separately arranged transport process."
+        st.markdown(
+            '<div class="ss-readable-note"><strong>Demonstration board:</strong> Offers are kept only in this session and '
+            'are not shared across users or saved centrally. Any proposed movement requires authorised review, local policy '
+            'checks and a separately arranged transport process.</div>',
+            unsafe_allow_html=True,
         )
         offers = st.session_state.setdefault("ss_swap_offers", [])
         requests = st.session_state.setdefault("ss_swap_requests", [])
@@ -515,10 +517,11 @@ def render_workflows(
     # Portable work pack for offline spreadsheet review, not an offline PWA.
     with offline_tab:
         st.markdown("#### Prepare a field work kit")
-        st.info(
-            "The hosted Streamlit app still needs internet to open and sync. This ZIP "
-            "is a portable work pack for approved offline spreadsheet review; it is "
-            "not a standalone offline app, background sync service or conflict-safe database."
+        st.markdown(
+            '<div class="ss-readable-note"><strong>Offline work kit:</strong> The hosted Streamlit app needs internet to open. '
+            'This ZIP is a portable work pack for approved offline spreadsheet review; it is not a standalone offline app, '
+            'background sync service or conflict-safe database.</div>',
+            unsafe_allow_html=True,
         )
         shelf_rows = []
         for item_key, cell in st.session_state.get("ss_shelf_assignments", {}).items():
