@@ -258,7 +258,13 @@ def audit_inventory(
                     review = "No low-cover flag from this simple rule"
 
             if expired_count and eligible_count:
-                review = "Review: expired batch excluded; verify remaining stock cover"
+                if review.startswith("Review: estimated cover is at/below"):
+                    review = (
+                        "Review: estimated cover is at/below lead time + buffer; "
+                        "expired batch excluded - verify remaining stock cover"
+                    )
+                else:
+                    review = "Review: expired batch excluded; verify remaining stock cover"
 
         product_rows.append(
             {
