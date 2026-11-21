@@ -9,7 +9,7 @@ import streamlit as st
 
 from stocksignal import REQUIRED_COLUMNS, audit_inventory
 from stocksignal_workflows import render_workflows
-
+from stocksignal_snapshots import build_snapshot_audit_metadata, compare_inventory_snapshots
 st.set_page_config(
     page_title="StockSignal | Inventory Intelligence",
     page_icon="🩺",
@@ -461,6 +461,95 @@ render_workflows(
     analysis_date=analysis_date,
     expiry_days=int(expiry_days),
 )
+st.markdown("---")
+st.markdown(
+    '<div class="section-kicker">06 / Inventory change intelligence</div>'
+    '<div class="section-title">Compare inventory snapshots</div>'
+    '<div class="section-help">Compare two authorised CSV exports to identify added, changed, missing and ambiguous batch records.</div>',
+    unsafe_allow_html=True,
+)
+st.info(
+    "Read-only comparison: StockSignal reports differences between files. It does not synchronise systems, "
+    "change inventory, or infer why a record changed or is absent. Verify every difference with an authorised person. "
+    "Use synthetic data for this public demonstration."
+)
+with st.container(border=True):
+    previous_col, current_col = st.columns(2, gap="large")
+    with previous_col:
+        previous_upload = st.file_uploader(
+            "Previous inventory export", type=["csv"], key="ss_previous_snapshot"
+        )
+    with current_col:
+        current_upload = st.file_uploader(
+            "Latest inventory export", type=["csv"], key="ss_current_snapshot"
+        )
+
+    if previous_upload is None or current_upload is None:
+        st.caption("Upload both CSV files to compare them. The files are compared in this app session only.")
+    elif previous_upload.size > 15 * 1024 * 1024 or current_upload.size > 15 * 1024 * 1024:
+        st.error("Each snapshot must be 15 MB or smaller for this demonstration.")
+    else:
+        key_types = {
+            "facility_code": "string",
+            "product_code": "string",
+            "batch_number": "string",
+        }
+        try:
+            previous_df = pd.read_csv(previous_upload, dtype=key_types)
+            current_df = pd.read_csv(current_upload, dtype=key_types)
+            snapshot_summary, snapshot_changes = compare_inventory_snapshots(
+                previous_df, current_df
+            )
+        except (ValueError, TypeError, UnicodeDecodeError, pd.errors.ParserError, pd.errors.EmptyDataError) as exc:
+            st.error(f"The snapshots could not be compared: {exc}")
+        else:
+            st.markdown("**Comparison summary**")
+            summary_row_1 = st.columns(3, gap="medium")
+            summary_row_2 = st.columns(3, gap="medium")
+            with summary_row_1[0]:
+                st.metric("Added in latest", snapshot_summary["added_records"])
+            with summary_row_1[1]:
+                st.metric("Not present in latest", snapshot_summary["not_present_in_current"])
+            with summary_row_1[2]:
+                st.metric("Changed records", snapshot_summary["changed_records"])
+            with summary_row_2[0]:
+                st.metric("Unchanged records", snapshot_summary["unchanged_records"])
+            with summary_row_2[1]:
+                st.metric("Ambiguous duplicate keys", snapshot_summary["ambiguous_duplicate_keys"])
+            with summary_row_2[2]:
+                st.metric("Rows with missing identity", snapshot_summary["unmatchable_rows"])
+
+            if snapshot_changes.empty:
+                st.success("No comparable differences or identity conflicts were found in these snapshots.")
+            else:
+                st.markdown("**Record-level change report**")
+                st.dataframe(
+                    snapshot_changes,
+                    width="stretch",
+                    hide_index=True,
+                    height=min(480, 90 + 38 * len(snapshot_changes)),
+                )
+
+            receipt = build_snapshot_audit_metadata(
+                previous_upload.name, current_upload.name, snapshot_summary
+            )
+            report_col, receipt_col = st.columns(2)
+            with report_col:
+                st.download_button(
+                    "Download change report CSV",
+                    data=snapshot_changes.to_csv(index=False).encode("utf-8"),
+                    file_name="stocksignal_snapshot_change_report.csv",
+                    mime="text/csv",
+                    key="ss_download_snapshot_changes",
+                )
+            with receipt_col:
+                st.download_button(
+                    "Download comparison receipt CSV",
+                    data=receipt.to_csv(index=False).encode("utf-8"),
+                    file_name="stocksignal_snapshot_comparison_receipt.csv",
+                    mime="text/csv",
+                    key="ss_download_snapshot_receipt",
+                )
 
 st.markdown(
     """
