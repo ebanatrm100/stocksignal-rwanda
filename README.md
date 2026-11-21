@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/stocksignal-banner.svg" alt="STOCKSIGNAL — Turn inventory rows into clearer review signals" width="100%" />
+  <img src="stocksignal-banner.svg" alt="STOCKSIGNAL — Turn inventory rows into clearer review signals" width="100%" />
 
   <h1>STOCKSIGNAL</h1>
   <p><strong>Turn inventory rows into clearer review signals.</strong></p>
@@ -15,35 +15,41 @@
 
 ## Why STOCKSIGNAL?
 
-Inventory teams can only act on what the records reveal. Missing values, stale updates, expiry dates, duplicate batch identifiers, and uncertain stock-cover estimates can make an inventory file harder to review.
+Inventory teams can only act on what records reveal. Missing values, stale updates, expiry dates, duplicate batch identifiers and uncertain stock-cover estimates can make an inventory export difficult to review.
 
-**STOCKSIGNAL is a small, transparent review workspace** that reads a structured CSV and surfaces rule-based findings for a person to investigate. It is an early prototype for learning, demonstrations, and structured feedback—not a replacement for an electronic logistics management information system (eLMIS).
+**STOCKSIGNAL is a transparent review workspace.** It reads a structured CSV and surfaces rule-based findings for an authorised person to investigate. The snapshot comparison also shows how two exports differ at batch-record level. This is an early prototype for demonstrations and structured feedback, not a replacement for an electronic logistics management information system (eLMIS).
 
 ## What the prototype does
 
-| Capability | What you can review |
-|---|---|
-| **Data-quality checks** | Missing fields, invalid numbers/dates, negative quantities or lead times, stale or future-dated updates |
-| **Expiry review** | Expired batches and batches inside a configurable warning window |
-| **Duplicate detection** | Repeated facility + product + batch keys |
-| **Stock-cover screening** | Simple estimated days of stock compared with lead time plus a configurable buffer |
-| **Downloadable findings** | Export row-level and product-level review results as CSV |
-| **Configurable review date** | Test how date-based findings change as the analysis date changes |
+| Capability | What can be reviewed | Current implementation boundary |
+|---|---|---|
+| Data-quality checks | Missing fields, invalid numbers/dates, negative values, stale or future-dated updates | Visible rule-based checks; human verification required |
+| Expiry review | Expired batches and batches inside a configurable warning window | An expiry flag is not a dispensing or disposal instruction |
+| Duplicate detection | Repeated facility + product + batch keys | Ambiguous records are flagged rather than silently counted as separate trusted batches |
+| Stock-cover screening | Estimated days of stock compared with lead time plus a configurable buffer | A simple screening estimate, not a validated forecast or reorder recommendation |
+| Inventory snapshot comparison | Added, absent, changed, unchanged, duplicate and unmatchable batch identities across two CSV exports | Read-only, per-session comparison; no persistent audit database or automatic synchronisation |
+| Downloadable evidence | Row-level, product-level, snapshot change reports and a comparison receipt | CSV exports for review; a receipt is not a tamper-proof audit log |
+| Voice observation workflow | Record an audio memo, enter/verify a transcript and prepare a structured draft | No automatic speech recognition; text extraction is rule-based |
+| Shelf-location map | Manually assign source rows to cells on a demonstration shelf grid | Session-only manual mapping; not connected to RFID, IoT or sensors |
+| District coordination board | Prepare non-binding offers and expressions of interest | Session-only draft workflow; no clinical equivalence check, reservation, transfer or transport booking |
+| Field work kit | Export source data and draft workflow records as a ZIP for spreadsheet review | Not a standalone offline app and has no automatic multi-user sync |
 
-The rules are visible in [`stocksignal.py`](stocksignal.py); the interactive interface is in [`app.py`](app.py). The calculation is deliberately simple and explainable rather than presented as AI or a predictive model.
+The calculations and rules are visible in [`stocksignal.py`](stocksignal.py), snapshot comparisons in [`stocksignal_snapshots.py`](stocksignal_snapshots.py), workflow prototypes in [`stocksignal_workflows.py`](stocksignal_workflows.py), and the interactive interface in [`app.py`](app.py). The calculations are deliberately explainable rather than presented as AI or a predictive model.
 
-## Run it locally
+## Open the demonstration
+
+**Official hosted demonstration:** [https://stocksignal-rwanda-regis.streamlit.app](https://stocksignal-rwanda-regis.streamlit.app)
+
+Use synthetic demonstration data for a public presentation. The app is configured from this repository's `main` branch and `app.py` entry point. After a change is merged into `main`, Streamlit Community Cloud should deploy the updated code; confirm the deployment has completed before presenting.
+
+## Run locally
 
 ### 1. Get the project
 
-Download this repository as a ZIP from GitHub and extract it, or clone it from your terminal after creating the repository:
-
 ```bash
-git clone https://github.com/YOUR-GITHUB-USERNAME/stocksignal-rwanda.git
+git clone https://github.com/ebanatrm100/stocksignal-rwanda.git
 cd stocksignal-rwanda
 ```
-
-Replace `YOUR-GITHUB-USERNAME` with your GitHub username.
 
 ### 2. Install dependencies
 
@@ -52,7 +58,7 @@ Replace `YOUR-GITHUB-USERNAME` with your GitHub username.
 ```powershell
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 ```
 
 **macOS / Linux**
@@ -60,42 +66,43 @@ py -m venv .venv
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install -r requirements-dev.txt
 ```
 
-### 3. Start the application
+### 3. Run the app and tests
 
 **Windows PowerShell**
 
 ```powershell
 .\.venv\Scripts\python.exe -m streamlit run app.py
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
 **macOS / Linux**
 
 ```bash
 .venv/bin/python -m streamlit run app.py
+.venv/bin/python -m pytest -q
 ```
 
-Streamlit normally opens a browser at `http://localhost:8501`. That address is local to your computer. To make the app accessible when your terminal is closed and by people on other computers, deploy it to a hosting service; see [Deploy online](#deploy-online).
+The local address (`http://localhost:8501`) is accessible only from the computer running the app. Use the hosted URL when presenting from another device.
 
-## Deploy online with Streamlit Community Cloud
+## Snapshot comparison demonstration
 
-1. Sign in at [GitHub](https://github.com/) and create a **public** repository named `stocksignal-rwanda` (public means the source code is visible).
-2. Upload the contents of this project folder to the repository root. Check that `app.py`, `stocksignal.py`, `requirements.txt`, and `sample_inventory.csv` are at the top level.
-3. Sign in to [Streamlit Community Cloud](https://share.streamlit.io/) using your GitHub account.
-4. Create an app and select your repository, the `main` branch, and `app.py` as the main file.
-5. Deploy, then test the generated HTTPS `.streamlit.app` URL from an incognito window or another device.
+The section **06 / Inventory change intelligence** compares two authorised CSV exports using the identity key `facility_code + product_code + batch_number`.
 
-Official guide: [Deploy a Streamlit app](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy).
+1. Upload `sample_snapshot_previous.csv` as **Previous inventory export**.
+2. Upload `sample_snapshot_latest.csv` as **Latest inventory export**.
+3. Review the summary and the row-level change report.
+4. Download the change report and comparison receipt if you need presentation evidence.
 
-**Hosting note:** free Community Cloud apps can sleep after periods without traffic and may need to wake when opened. This does not guarantee uninterrupted 24/7 availability. A real deployment should also consider uptime, access control, privacy, security, and data-governance needs.
+The supplied records are fabricated. Expected demonstration summary: 1 added record, 1 record not present in the latest export, 3 changed records, 6 unchanged records, 1 ambiguous duplicate key and 0 rows with missing identity.
 
-For a longer checklist, see [`README_DEPLOY.md`](README_DEPLOY.md). To upload the complete folder structure from Windows, follow [`GITHUB_UPLOAD_GUIDE.md`](GITHUB_UPLOAD_GUIDE.md).
+“Not present in latest” means only that the identity is absent from the newer file; it does not explain why. Duplicate keys are not automatically matched. The receipt records the comparison run and file names, but it is not a persistent database, cryptographic proof or tamper-proof audit log.
 
 ## CSV format
 
-Upload a CSV with these exact column names:
+The inventory files use these exact required column names:
 
 ```text
 facility_code
@@ -109,48 +116,37 @@ expiry_date
 last_stock_update
 ```
 
-- Dates should use `YYYY-MM-DD` where possible.
-- Quantity and consumption must use compatible units.
-- The bundled [`sample_inventory.csv`](sample_inventory.csv) is **synthetic demonstration data** and intentionally contains examples of conditions the prototype can flag.
-- Read [`data_dictionary.md`](data_dictionary.md) for field definitions and assumptions.
+Dates should use `YYYY-MM-DD` where possible. Quantity and consumption must use compatible units. See [`data_dictionary.md`](data_dictionary.md) for field definitions and assumptions.
 
 ## How stock-cover screening works
-
-The prototype estimates:
 
 \[
 \text{Estimated days of stock} = \frac{\text{eligible stock quantity}}{\text{average monthly consumption} / 30.4375}
 \]
 
-It then compares this estimate with:
+The result is compared with recorded lead time plus the configurable review buffer. A result at or below that threshold is labelled for **human review**. It is not a reorder recommendation.
 
-\[
-\text{Recorded lead time in days} + \text{review buffer}
-\]
+Expired batches, batches with missing expiry dates, duplicate batch keys, missing identity fields, invalid quantities and negative quantities are excluded from eligible stock quantity. The estimate does not model pending orders, seasonality, reservations, allocations, losses, demand spikes, supplier uncertainty, clinical criticality or local policy.
 
-A result at or below that threshold is labelled for **human review**. It is not a reorder recommendation.
+## Tests and continuous integration
 
-For a more conservative estimate, the current code excludes expired batches, batches with missing expiry dates, duplicate batch keys, missing facility/product/batch identifiers, invalid quantities, and negative quantities from the eligible stock quantity. These rows remain visible in row-level findings. Near-expiry batches are flagged but can still contribute while their expiry date is on or after the selected analysis date. The estimate does not model pending orders, seasonality, stock reservations, allocation, loss adjustments, demand spikes, supplier uncertainty, clinical criticality, or local policy.
-
-## Tests
-
-Run the automated tests with:
+Run the full suite with:
 
 ```bash
 python -m pytest -q
 ```
 
-Install the development dependencies first with `python -m pip install -r requirements-dev.txt`, then run the tests. The test suite covers sample-data checks, schema validation, configurable thresholds, expired/missing-expiry stock exclusion, duplicate batch handling, non-finite values, zero consumption, negative quantities, and inconsistent consumption values. A GitHub Actions workflow runs these tests on pushes and pull requests.
+Install development dependencies with `python -m pip install -r requirements-dev.txt`. The GitHub Actions workflow at [`.github/workflows/tests.yml`](.github/workflows/tests.yml) runs the tests on pushes and pull requests using Python 3.11 and 3.12.
 
-The manual demo checklist is in [`test_cases.md`](test_cases.md).
+The manual test plan is in [`test_cases.md`](test_cases.md). The competition walkthrough is in [`COMPETITION_DEMO_GUIDE.md`](COMPETITION_DEMO_GUIDE.md).
 
 ## Roadmap
 
-- [ ] Collect feedback from authorised pharmacy / supply-chain reviewers using synthetic or approved de-identified test cases.
-- [ ] Validate rule behaviour against independently reviewed test examples.
-- [ ] Improve the explanation of excluded and uncertain stock records.
-- [ ] Evaluate whether the workflow adds value alongside existing eLMIS processes before proposing integration.
-- [ ] Complete privacy, security, access-control, and governance review before any real-data pilot.
+- Gather feedback from authorised pharmacy and supply-chain reviewers using synthetic or approved de-identified examples.
+- Validate the rules against independently reviewed test cases and measure false positives and missed issues.
+- Evaluate value alongside existing eLMIS processes before proposing interoperability.
+- Design secure identity, role-based access, persistent audit history, retention and governance before any real-data pilot.
+- Evaluate speech recognition and offline synchronisation only after language, privacy, network and conflict-handling requirements are defined.
 
 These are future tasks, not claims of completed validation or integration.
 
@@ -158,21 +154,13 @@ These are future tasks, not claims of completed validation or integration.
 
 > **Prototype only. Human review is required.**
 
-- Do not upload patient information, credentials, confidential facility records, or real inventory data to this public demonstration.
-- Do not use the output as an instruction to order, transfer, quarantine, dispense, or discard stock.
-- A qualified, authorised person must verify the source data and follow approved procedures.
-- Do not treat the estimate as a validated forecast or as evidence of improved medicine availability.
-- The project does not replace eLMIS or any official system, supply-chain policy, or professional judgment.
+- Do not upload patient information, credentials, confidential facility records or real inventory data to this public demonstration.
+- Do not use output as an instruction to order, transfer, quarantine, dispense or discard stock.
+- An authorised person must verify source records and follow approved procedures.
+- Do not treat the estimate as a validated forecast or evidence of improved medicine availability.
+- The project does not replace eLMIS, supply-chain policy or professional judgement.
 
-See [`SECURITY.md`](SECURITY.md) before reporting an issue.
-
-## Contributing
-
-Issues and careful feedback are welcome, especially reproducible examples using synthetic data. Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first and never include confidential health or facility information in public issues.
-
-## License
-
-The code in this repository is available under the [MIT License](LICENSE). Third-party dependencies retain their own licenses.
+See [`SECURITY.md`](SECURITY.md) before reporting an issue. The code is available under the [MIT License](LICENSE).
 
 ---
 
