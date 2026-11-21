@@ -316,12 +316,35 @@ except (ValueError, TypeError) as exc:
 
 # Summary calculations use the existing reviewed logic.
 quality_issue_rows = int(audited["data_quality_issue"].sum())
-expiry_rows = int(audited["review_flags"].str.contains("Batch expires|Batch is expired", regex=True).sum())
-stock_review_rows = int(product_risk["stock_review_status"].str.startswith("Review:").sum()) if not product_risk.empty else 0
+
+expiry_rows = int(
+    audited["review_flags"]
+    .str.contains("Batch expires|Batch is expired", regex=True)
+    .sum()
+)
+
+stock_review_rows = (
+    int(
+        product_risk["stock_review_status"]
+        .str.startswith("Review: estimated cover is at/below")
+        .sum()
+    )
+    if not product_risk.empty else 0
+)
+
+data_conflict_products = (
+    int(
+        product_risk["stock_review_status"]
+        .str.startswith("Review: data conflict -")
+        .sum()
+    )
+    if not product_risk.empty else 0
+)
+
 clean_rows = max(0, len(audited) - quality_issue_rows)
 
 st.markdown('<div class="section-kicker">02 / At a glance</div><div class="section-title">Review overview</div><div class="section-help">A quick summary of records that may require verification.</div>', unsafe_allow_html=True)
-m1, m2, m3, m4 = st.columns(4, gap="medium")
+m1, m2, m3, m4, m5 = st.columns(5, gap="medium")
 with m1:
     st.metric("Inventory records", f"{len(audited):,}", help="Number of inventory rows in the selected source.")
 with m2:
@@ -329,12 +352,19 @@ with m2:
 with m3:
     st.metric("Expiry reviews", f"{expiry_rows:,}", help="Rows that are expired or inside the configured expiry-warning window.")
 with m4:
-    st.metric("Stock-cover reviews", f"{stock_review_rows:,}", help="Products at or below the configured lead-time plus buffer threshold.")
+    st.metric("Stock-cover reviews", f"{stock_review_rows:,}", help="Products with a calculated stock-cover estimate at or below the threshold. Data conflicts are shown separately in the priority review list.")
 
+
+with m5:
+    st.metric(
+        "Data-conflict products",
+        f"{data_conflict_products:,}",
+        help="Products whose stock-cover calculations are blocked pending data verification."
+    )
 # Small orientation panel helps people understand the intended workflow.
 left, right = st.columns([1.55, 1], gap="large")
 with left:
-    st.markdown('<div class="section-kicker">03 / Review queue</div><div class="section-title">Priority review list</div><div class="section-help">Products whose estimated days of stock meet the configured review rule.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-kicker">03 / Review queue</div><div class="section-title">Priority review list</div><div class="section-help">Products with low estimated cover or data conflicts that prevent a reliable estimate.</div>', unsafe_allow_html=True)
     low_cover = product_risk[product_risk["stock_review_status"].str.startswith("Review:")].copy() if not product_risk.empty else product_risk
     if low_cover.empty:
         st.success("No product crossed the configured stock-cover review threshold in this dataset.")

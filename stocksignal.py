@@ -1,7 +1,6 @@
 """Core rule-based checks for the STOCKSIGNAL demonstration prototype.
 
-This module intentionally provides transparent screening rules rather than a
-predictive model or an ordering recommendation. Every result needs human review.
+Transparent screening rules only. Every finding requires human verification.
 """
 from __future__ import annotations
 
@@ -28,6 +27,7 @@ NUMERIC_COLUMNS = ["quantity_on_hand", "average_monthly_consumption", "lead_time
 DATE_COLUMNS = ["expiry_date", "last_stock_update"]
 BATCH_KEY_COLUMNS = ["facility_code", "product_code", "batch_number"]
 PRODUCT_KEY_COLUMNS = ["facility_code", "product_code"]
+DAYS_PER_MONTH = 30.4375
 
 
 def _is_blank(value: Any) -> bool:
@@ -38,10 +38,21 @@ def _is_blank(value: Any) -> bool:
 
 
 def _finite_numeric_series(series: pd.Series) -> pd.Series:
-    """Parse numeric values, treating positive/negative infinity as invalid."""
+    """Parse numeric values and convert NaN/positive or negative infinity to NA."""
     parsed = pd.to_numeric(series, errors="coerce")
     finite = pd.Series(np.isfinite(parsed.fillna(0)), index=series.index)
     return parsed.where(parsed.isna() | finite)
+
+
+def _blocks_stock_cover(flag: str) -> bool:
+    """Whether a row finding makes a product-level cover estimate unsafe.
+
+    An expired batch is excluded from the eligible quantity, but does not by
+    itself invalidate other identifiable, current, non-expired batches.
+    Every other data-integrity finding blocks the whole product group so a
+    partial result cannot be presented as a complete stock position.
+    """
+    return not (flag.startswith("Batch expires") or flag.startswith("Batch is expired"))
 
 
 def audit_inventory(
@@ -53,17 +64,14 @@ def audit_inventory(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return ``(row_audit, product_review)`` for a stock CSV/DataFrame.
 
-    Estimated cover is calculated as:
+    Estimated days of stock = eligible, non-expired quantity / (monthly
+    consumption / 30.4375). A product-level result is withheld if any source
+    row for that facility/product has an identity, freshness, quantity,
+    consumption, lead-time, expiry-date, duplicate-key, or consistency issue.
 
-        eligible stock quantity / (average monthly consumption / 30.4375)
-
-    Only non-negative quantities belonging to identifiable, unique batch rows
-    with a known expiry date on or after ``as_of_date`` are counted. Expired,
-    duplicate-key, missing-expiry, missing-key, invalid, and negative-quantity
-    rows are excluded from the cover quantity and remain visible for review.
-
-    This is a simple screening estimate. It does not model pending orders,
-    seasonality, allocation, demand uncertainty, or clinical criticality.
+    Expired batches are excluded from quantity. If other valid batches remain,
+    their cover may be estimated, with the expired batch still visible in the
+    row audit. This is a screening estimate, not an ordering recommendation.
     """
     if not isinstance(data, pd.DataFrame):
         raise TypeError("Input data must be a pandas DataFrame.")
@@ -88,12 +96,19 @@ def audit_inventory(
         df[column] = _finite_numeric_series(df[column])
 
     for column in DATE_COLUMNS:
-        df[column] = pd.to_datetime(df[column], errors="coerce").dt.date
+        parsed_dates = pd.to_datetime(df[column], errors="coerce")
+        # Force ordinary Python date objects so missing dates remain None and
+        # comparisons work consistently across pandas versions.
+        df[column] = pd.Series(
+            [value.date() if pd.notna(value) else None for value in parsed_dates],
+            index=df.index,
+            dtype="object",
+        )
 
     expiry_cutoff = as_of_date + timedelta(days=int(expiry_warning_days))
     flags: list[list[str]] = [[] for _ in range(len(df))]
 
-    # Required values and type/number/date parsing checks.
+    # Row-level validation and review flags.
     for position, (_, row) in enumerate(df.iterrows()):
         for column in TEXT_COLUMNS:
             if pd.isna(row[column]):
@@ -137,7 +152,7 @@ def audit_inventory(
             elif expiry <= expiry_cutoff:
                 flags[position].append(f"Batch expires within {expiry_warning_days} days")
 
-    # Only assess duplicates when all parts of the batch key are present.
+    # Duplicate detection is applied only when all batch-key fields exist.
     duplicate_mask = pd.Series(False, index=df.index, dtype=bool)
     complete_batch_key = df[BATCH_KEY_COLUMNS].notna().all(axis=1)
     complete_indexes = df.index[complete_batch_key]
@@ -149,7 +164,7 @@ def audit_inventory(
         if is_duplicate:
             flags[position].append("Duplicate facility/product/batch key")
 
-    # Conflicting monthly-consumption values make the estimate less reliable.
+    # Inconsistent monthly consumption is not silently averaged away.
     complete_product_key = df[PRODUCT_KEY_COLUMNS].notna().all(axis=1)
     valid_amc = df["average_monthly_consumption"].notna() & df["average_monthly_consumption"].ge(0)
     consistency_rows = df.loc[complete_product_key & valid_amc]
@@ -162,62 +177,94 @@ def audit_inventory(
     audit["review_flags"] = ["; ".join(row_flags) if row_flags else "No rule triggered" for row_flags in flags]
     audit["flag_count"] = [len(row_flags) for row_flags in flags]
     audit["data_quality_issue"] = [
-        any(
-            not (flag.startswith("Batch expires") or flag.startswith("Batch is expired"))
-            for flag in row_flags
-        )
-        for row_flags in flags
+        any(_blocks_stock_cover(flag) for flag in row_flags) for row_flags in flags
     ]
 
-    # A row is eligible to contribute to estimated cover only when its stock
-    # quantity and identity are usable and its expiry status can be verified.
-    eligible_for_cover = (
+    # A row is individually usable only when identity, numeric fields, dates,
+    # and update freshness are all valid. Duplicate groups are blocked below.
+    row_has_blocker = pd.Series(
+        [any(_blocks_stock_cover(flag) for flag in row_flags) for row_flags in flags],
+        index=df.index,
+        dtype=bool,
+    )
+    expiry_valid_mask = df["expiry_date"].map(
+        lambda value: isinstance(value, date) and value >= as_of_date
+    ).astype(bool)
+    update_fresh_mask = df["last_stock_update"].map(
+        lambda value: isinstance(value, date)
+        and 0 <= (as_of_date - value).days <= stale_days
+    ).astype(bool)
+    individually_eligible = (
         complete_product_key
         & complete_batch_key
         & ~duplicate_mask
+        & ~row_has_blocker
         & df["quantity_on_hand"].notna()
         & df["quantity_on_hand"].ge(0)
-        & df["expiry_date"].notna()
-        & df["expiry_date"].ge(as_of_date)
+        & df["average_monthly_consumption"].notna()
+        & df["average_monthly_consumption"].ge(0)
+        & df["lead_time_days"].notna()
+        & df["lead_time_days"].ge(0)
+        & expiry_valid_mask
+        & update_fresh_mask
     )
 
     product_rows: list[dict[str, Any]] = []
     for (facility, product), group in df.groupby(PRODUCT_KEY_COLUMNS, dropna=False, sort=True):
-        eligible_group = group.loc[eligible_for_cover.loc[group.index]]
-        eligible_count = len(eligible_group)
+        group_indexes = group.index
         source_count = len(group)
-        stock = (
-            float(eligible_group["quantity_on_hand"].sum())
-            if eligible_count
-            else None
-        )
-
-        amc_values = group["average_monthly_consumption"].dropna()
-        amc_values = amc_values[amc_values >= 0]
-        amc = float(amc_values.median()) if len(amc_values) else None
-
-        lead_values = group["lead_time_days"].dropna()
-        lead_values = lead_values[lead_values >= 0]
-        lead_time = float(lead_values.max()) if len(lead_values) else None
+        group_flags = [flag for position in group_indexes for flag in flags[position]]
+        blocking_reasons = sorted({flag for flag in group_flags if _blocks_stock_cover(flag)})
+        has_blocker = bool(blocking_reasons)
 
         name = next((value for value in group["product_name"].tolist() if pd.notna(value)), "Unknown")
-        threshold = lead_time + int(lead_buffer_days) if lead_time is not None else None
-        days_cover = None
+        expired_count = int(group["expiry_date"].map(
+            lambda value: isinstance(value, date) and value < as_of_date
+        ).sum())
 
-        if eligible_count == 0:
-            review = "Not calculable - no eligible unique, non-expired batch rows"
-        elif amc is None:
-            review = "Not calculable - check stock/consumption data"
-        elif amc <= 0:
-            review = "Not calculable - average monthly consumption is zero"
-        elif threshold is None:
-            review = "Not calculable - lead time is missing or invalid"
+        if has_blocker:
+            eligible_group = group.iloc[0:0]
+            eligible_count = 0
+            stock = None
+            amc = None
+            lead_time = None
+            threshold = None
+            days_cover = None
+            review = "Review: data conflict - no eligible trustworthy batches; stock cover not calculated; verify source records"
+            blocker_text = "; ".join(blocking_reasons)
         else:
-            days_cover = round(stock / (amc / 30.4375), 1)
-            if days_cover <= threshold:
-                review = "Review: estimated cover is at/below lead time + buffer"
+            eligible_group = group.loc[individually_eligible.loc[group_indexes]]
+            eligible_count = len(eligible_group)
+            stock = float(eligible_group["quantity_on_hand"].sum()) if eligible_count else None
+
+            # After the group-level validation, all AMC values are valid and
+            # consistent; use the first value instead of masking bad rows.
+            amc = float(group["average_monthly_consumption"].iloc[0])
+            lead_time = float(group["lead_time_days"].max())
+            threshold = lead_time + int(lead_buffer_days)
+            blocker_text = ""
+
+            if eligible_count == 0:
+                days_cover = None
+                review = "Not calculable - no eligible unique, non-expired batch rows"
+            elif amc <= 0:
+                days_cover = None
+                review = "Not calculable - average monthly consumption is zero"
             else:
-                review = "No low-cover flag from this simple rule"
+                days_cover = round(stock / (amc / DAYS_PER_MONTH), 1)
+                if days_cover <= threshold:
+                    review = "Review: estimated cover is at/below lead time + buffer"
+                else:
+                    review = "No low-cover flag from this simple rule"
+
+            if expired_count and eligible_count:
+                if review.startswith("Review: estimated cover is at/below"):
+                    review = (
+                        "Review: estimated cover is at/below lead time + buffer; "
+                        "expired batch excluded - verify remaining stock cover"
+                    )
+                else:
+                    review = "Review: expired batch excluded; verify remaining stock cover"
 
         product_rows.append(
             {
@@ -230,13 +277,21 @@ def audit_inventory(
                 "estimated_days_of_stock": days_cover,
                 "review_threshold_days": threshold,
                 "stock_review_status": review,
+                "calculation_blockers": blocker_text,
+                "expired_batch_rows_excluded": expired_count,
                 "source_rows": source_count,
                 "eligible_batch_rows": eligible_count,
                 "excluded_batch_rows": source_count - eligible_count,
             }
         )
 
-    product_review = pd.DataFrame(product_rows)
+    product_columns = [
+        "facility_code", "product_code", "product_name", "eligible_quantity_on_hand",
+        "average_monthly_consumption_used", "lead_time_days_used", "estimated_days_of_stock",
+        "review_threshold_days", "stock_review_status", "calculation_blockers",
+        "expired_batch_rows_excluded", "source_rows", "eligible_batch_rows", "excluded_batch_rows",
+    ]
+    product_review = pd.DataFrame(product_rows, columns=product_columns)
     if not product_review.empty:
         product_review = product_review.sort_values(
             by="estimated_days_of_stock", na_position="last", kind="stable"
