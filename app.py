@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from datetime import date
 from html import escape
 from pathlib import Path
@@ -10,6 +12,11 @@ import streamlit as st
 from stocksignal import REQUIRED_COLUMNS, audit_inventory
 from stocksignal_workflows import render_workflows
 from stocksignal_snapshots import build_snapshot_audit_metadata, compare_inventory_snapshots
+from stocksignal_intelligence import (
+    build_data_completeness_profile,
+    parse_gs1_scan,
+    simulate_stock_cover,
+)
 st.set_page_config(
     page_title="StockSignal | Inventory Intelligence",
     page_icon="🩺",
@@ -555,6 +562,16 @@ with st.container(border=True):
             receipt = build_snapshot_audit_metadata(
                 previous_upload.name, current_upload.name, snapshot_summary
             )
+            receipt["previous_file_sha256"] = hashlib.sha256(
+                previous_upload.getvalue()
+            ).hexdigest()
+            receipt["latest_file_sha256"] = hashlib.sha256(
+                current_upload.getvalue()
+            ).hexdigest()
+            receipt["fingerprint_note"] = (
+                "SHA-256 identifies exact file bytes; it does not prove source authenticity "
+                "or create a tamper-proof audit trail."
+            )
             report_col, receipt_col = st.columns(2)
             with report_col:
                 st.download_button(
@@ -572,6 +589,136 @@ with st.container(border=True):
                     mime="text/csv",
                     key="ss_download_snapshot_receipt",
                 )
+
+st.markdown("---")
+st.markdown(
+    '<div class="section-kicker">07 / Data intelligence</div>'
+    '<div class="section-title">Completeness and scenario analysis</div>'
+    '<div class="section-help">Transparent summaries and user-defined what-if calculations. No automated procurement decisions.</div>',
+    unsafe_allow_html=True,
+)
+
+with st.expander("View required-field completeness profile", expanded=False):
+    completeness_profile = build_data_completeness_profile(source_df)
+    st.caption(
+        "This profile counts missing and blank values across the nine required fields. "
+        "It is not a single quality score: a present value may still be incorrect or stale."
+    )
+    st.dataframe(completeness_profile, width="stretch", hide_index=True)
+
+with st.expander("Open explainable what-if scenario simulator", expanded=False):
+    st.caption(
+        "Select a product with a calculable baseline. Change assumed monthly consumption "
+        "and lead-time delay to see how the arithmetic changes. This is sensitivity analysis, "
+        "not a demand forecast or an order recommendation."
+    )
+    scenario_products = product_risk[
+        product_risk["estimated_days_of_stock"].notna()
+        & product_risk["average_monthly_consumption_used"].notna()
+        & product_risk["lead_time_days_used"].notna()
+        & product_risk["eligible_quantity_on_hand"].notna()
+        & (product_risk["average_monthly_consumption_used"] > 0)
+    ].reset_index(drop=True)
+    if scenario_products.empty:
+        st.info("No product has a calculable baseline in the current dataset.")
+    else:
+        scenario_labels = [
+            f"{row['facility_code']} · {row['product_code']} · {row['product_name']}"
+            for _, row in scenario_products.iterrows()
+        ]
+        selected_label = st.selectbox(
+            "Select a facility/product group", scenario_labels, key="ss_scenario_product"
+        )
+        selected_position = scenario_labels.index(selected_label)
+        selected_product = scenario_products.iloc[selected_position]
+        scenario_left, scenario_right = st.columns(2)
+        with scenario_left:
+            consumption_increase = st.slider(
+                "Assumed consumption increase (%)",
+                min_value=0,
+                max_value=100,
+                value=20,
+                step=5,
+                key="ss_scenario_consumption_increase",
+            )
+        with scenario_right:
+            extra_lead_time = st.slider(
+                "Assumed additional lead time (days)",
+                min_value=0,
+                max_value=60,
+                value=7,
+                step=1,
+                key="ss_scenario_extra_lead_time",
+            )
+        scenario_result = simulate_stock_cover(
+            selected_product["eligible_quantity_on_hand"],
+            selected_product["average_monthly_consumption_used"],
+            selected_product["lead_time_days_used"],
+            consumption_increase_percent=consumption_increase,
+            extra_lead_time_days=extra_lead_time,
+            review_buffer_days=int(buffer_days),
+        )
+        metric_a, metric_b, metric_c = st.columns(3)
+        with metric_a:
+            st.metric(
+                "Baseline estimated cover",
+                f"{scenario_result['baseline_days_of_stock']:.1f} days",
+            )
+        with metric_b:
+            st.metric(
+                "Scenario estimated cover",
+                f"{scenario_result['scenario_days_of_stock']:.1f} days",
+            )
+        with metric_c:
+            st.metric(
+                "Scenario review threshold",
+                f"{scenario_result['scenario_threshold_days']:.1f} days",
+            )
+        st.info(
+            f"Scenario result: {scenario_result['scenario_status']}. "
+            f"Margin against the user-defined threshold: "
+            f"{scenario_result['scenario_margin_days']:.1f} days. "
+            "Verify assumptions with an authorised reviewer; this output does not direct stock action."
+        )
+
+st.markdown("---")
+st.markdown(
+    '<div class="section-kicker">08 / GS1 traceability</div>'
+    '<div class="section-title">Barcode data capture draft</div>'
+    '<div class="section-help">Parse supported GS1 text from a compatible scanner or pasted barcode text for human verification.</div>',
+    unsafe_allow_html=True,
+)
+st.caption(
+    "This prototype accepts GS1 human-readable text or scanner element strings for AI 01 (GTIN-14), "
+    "AI 10 (batch/lot), AI 17 (expiry) and AI 21 (serial). It does not decode camera images, "
+    "look up a product catalogue or verify package authenticity."
+)
+gs1_input = st.text_input(
+    "Scan with a keyboard-wedge barcode scanner or paste GS1 text",
+    placeholder="(01)09506000134352(17)270630(10)LOT-A123",
+    key="ss_gs1_scan_text",
+)
+if gs1_input.strip():
+    gs1_result = parse_gs1_scan(gs1_input)
+    if gs1_result["errors"]:
+        for message in gs1_result["errors"]:
+            st.error(message)
+    else:
+        st.success("Supported fields parsed. Check every value against the original package label.")
+    for message in gs1_result["warnings"]:
+        st.warning(message)
+    st.dataframe(pd.DataFrame([gs1_result["fields"]]), width="stretch", hide_index=True)
+    if gs1_result["valid"]:
+        gs1_draft = pd.DataFrame(
+            [{**gs1_result["fields"], "review_status": "Draft — manual verification required"}]
+        )
+        st.download_button(
+            "Download barcode capture draft CSV",
+            data=gs1_draft.to_csv(index=False).encode("utf-8"),
+            file_name="stocksignal_gs1_capture_draft.csv",
+            mime="text/csv",
+            key="ss_download_gs1_draft",
+        )
 
 st.markdown(
     """

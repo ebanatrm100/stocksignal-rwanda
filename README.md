@@ -140,6 +140,15 @@ Install development dependencies with `python -m pip install -r requirements-dev
 
 The manual test plan is in [`test_cases.md`](test_cases.md). The competition walkthrough is in [`COMPETITION_DEMO_GUIDE.md`](COMPETITION_DEMO_GUIDE.md).
 
+## Competition-ready intelligence tools
+
+- **Field completeness profile:** reports missing/blank counts and completeness percentages for required CSV fields without inventing an opaque overall score.
+- **What-if scenario simulator:** shows how user-entered consumption and lead-time assumptions change a simple stock-cover calculation; it is not a forecast or procurement recommendation.
+- **GS1 barcode text capture:** parses selected GS1 AIs (01, 10, 17 and 21) from compatible scanner text or human-readable input into a draft for manual verification. It does not decode camera images or verify package authenticity.
+- **Snapshot file fingerprints:** adds SHA-256 digests to comparison receipts to help identify exact uploaded file bytes. This is not a signed or tamper-proof audit trail.
+
+These tools are transparent prototype helpers. Use only synthetic or approved data, and have authorised reviewers verify every parsed or calculated result.
+
 ## Roadmap
 
 - Gather feedback from authorised pharmacy and supply-chain reviewers using synthetic or approved de-identified examples.

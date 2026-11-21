@@ -2,6 +2,16 @@
 
 Changes to STOCKSIGNAL are recorded here.
 
+## 0.3.0 — Explainable inventory intelligence helpers
+
+- Added per-field data completeness profiling.
+- Added a user-defined what-if stock-cover sensitivity simulator.
+- Added a limited GS1 text parser for GTIN-14, batch/lot, expiry and serial fields.
+- Added SHA-256 fingerprints of uploaded snapshot files to comparison receipts.
+- Restored the full required-field dictionary and manual checks T01–T14 while retaining snapshot checks T15–T20 and adding intelligence checks T21–T25.
+
+These additions remain human-reviewed prototype features and do not provide demand forecasting, procurement instructions, barcode image decoding, catalogue lookup, or tamper-proof audit storage.
+
 ## 0.2.0 — Inventory comparison and competition-readiness documentation
 
 - Added read-only comparison of previous and latest inventory CSV snapshots.
