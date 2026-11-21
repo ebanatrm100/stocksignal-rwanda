@@ -473,6 +473,28 @@ st.info(
     "change inventory, or infer why a record changed or is absent. Verify every difference with an authorised person. "
     "Use synthetic data for this public demonstration."
 )
+with st.expander("Get the synthetic demonstration files"):
+    st.caption(
+        "These fabricated examples are safe for a public demonstration. Download both files, "
+        "then upload them below in the matching previous/latest fields."
+    )
+    demo_previous_col, demo_latest_col = st.columns(2, gap="medium")
+    with demo_previous_col:
+        st.download_button(
+            "Download previous snapshot CSV",
+            data=(BASE_DIR / "sample_snapshot_previous.csv").read_bytes(),
+            file_name="sample_snapshot_previous.csv",
+            mime="text/csv",
+            key="ss_download_demo_previous",
+        )
+    with demo_latest_col:
+        st.download_button(
+            "Download latest snapshot CSV",
+            data=(BASE_DIR / "sample_snapshot_latest.csv").read_bytes(),
+            file_name="sample_snapshot_latest.csv",
+            mime="text/csv",
+            key="ss_download_demo_latest",
+        )
 with st.container(border=True):
     previous_col, current_col = st.columns(2, gap="large")
     with previous_col:
